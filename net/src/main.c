@@ -32,23 +32,22 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #error "Sample requires definition of shared memory for rpmsg"
 #endif
 
-#define SHM_NODE            DT_CHOSEN(zephyr_ipc_shm)
-#define SHM_BASE_ADDRESS    DT_REG_ADDR(SHM_NODE)
-#define SHM_START_ADDR      (SHM_BASE_ADDRESS + 0x400)
-#define SHM_SIZE            0x7c00
-#define SHM_DEVICE_NAME     "sram0.shm"
+#define SHM_NODE DT_CHOSEN(zephyr_ipc_shm)
+#define SHM_BASE_ADDRESS DT_REG_ADDR(SHM_NODE)
+#define SHM_START_ADDR (SHM_BASE_ADDRESS + 0x400)
+#define SHM_SIZE 0x7c00
+#define SHM_DEVICE_NAME "sram0.shm"
 
-BUILD_ASSERT((SHM_START_ADDR + SHM_SIZE - SHM_BASE_ADDRESS)
-		<= DT_REG_SIZE(SHM_NODE),
-	"Allocated size exceeds available shared memory reserved for IPC");
+BUILD_ASSERT((SHM_START_ADDR + SHM_SIZE - SHM_BASE_ADDRESS) <= DT_REG_SIZE(SHM_NODE),
+	     "Allocated size exceeds available shared memory reserved for IPC");
 
-#define VRING_COUNT         2
-#define VRING_TX_ADDRESS    (SHM_START_ADDR + SHM_SIZE - 0x400)
-#define VRING_RX_ADDRESS    (VRING_TX_ADDRESS - 0x400)
-#define VRING_ALIGNMENT     4
-#define VRING_SIZE          16
+#define VRING_COUNT 2
+#define VRING_TX_ADDRESS (SHM_START_ADDR + SHM_SIZE - 0x400)
+#define VRING_RX_ADDRESS (VRING_TX_ADDRESS - 0x400)
+#define VRING_ALIGNMENT 4
+#define VRING_SIZE 16
 
-#define VDEV_STATUS_ADDR    SHM_BASE_ADDRESS
+#define VDEV_STATUS_ADDR SHM_BASE_ADDRESS
 
 /* End of configuration defines */
 
@@ -86,7 +85,7 @@ static unsigned char virtio_get_status(struct virtio_device *vdev)
 	return sys_read8(VDEV_STATUS_ADDR);
 }
 
-static u32_t virtio_get_features(struct virtio_device *vdev)
+static uint32_t virtio_get_features(struct virtio_device *vdev)
 {
 	return BIT(VIRTIO_RPMSG_F_NS);
 }
@@ -118,7 +117,8 @@ static void ipm_callback_process(struct k_work *work)
 	virtqueue_notification(vq[1]);
 }
 
-static void ipm_callback(void *context, u32_t id, volatile void *data)
+static void ipm_callback(const struct device *ipmdev, void *context, uint32_t id,
+			 volatile void *data)
 {
 	LOG_INF("Got callback of id %u", id);
 	k_work_submit(&ipm_work);
@@ -136,14 +136,11 @@ static int send_data(void *data, size_t len)
 	return 0;
 }
 
-int endpoint_cb(struct rpmsg_endpoint *ept, void *data, size_t len, u32_t src,
-		void *priv)
+int endpoint_cb(struct rpmsg_endpoint *ept, void *data, size_t len, uint32_t src, void *priv)
 {
 	LOG_INF("Received message of %u bytes.", len);
-	//LOG_HEXDUMP_DBG((uint8_t *)data, len, "Data:");
 	LOG_INF("Data: \n\n%s\n", log_strdup((uint8_t *)data));
 
-	//hci_rpmsg_rx((u8_t *) data, len);
 	send_data(data, len);
 
 	return RPMSG_SUCCESS;
@@ -154,12 +151,12 @@ static int hci_rpmsg_init(void)
 	int err;
 	struct metal_init_params metal_params = METAL_INIT_DEFAULTS;
 
-	static struct virtio_vring_info   rvrings[2];
-	static struct virtio_device       vdev;
-	static struct rpmsg_device        *rdev;
+	static struct virtio_vring_info rvrings[2];
+	static struct virtio_device vdev;
+	static struct rpmsg_device *rdev;
 	static struct rpmsg_virtio_device rvdev;
-	static struct metal_io_region     *io;
-	static struct metal_device        *device;
+	static struct metal_io_region *io;
+	static struct metal_device *device;
 
 	/* Setup IPM workqueue item */
 	k_work_init(&ipm_work, ipm_callback_process);
@@ -242,9 +239,8 @@ static int hci_rpmsg_init(void)
 
 	rdev = rpmsg_virtio_get_rpmsg_device(&rvdev);
 
-	err = rpmsg_create_ept(&ep, rdev, "dualcore", RPMSG_ADDR_ANY,
-				  RPMSG_ADDR_ANY, endpoint_cb,
-				  rpmsg_service_unbind);
+	err = rpmsg_create_ept(&ep, rdev, "dualcore", RPMSG_ADDR_ANY, RPMSG_ADDR_ANY, endpoint_cb,
+			       rpmsg_service_unbind);
 	if (err) {
 		LOG_ERR("rpmsg_create_ept failed %d", err);
 		return err;

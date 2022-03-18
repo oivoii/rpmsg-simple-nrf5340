@@ -33,13 +33,13 @@
 #define LOG_MODULE_NAME dualcore_app
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-#define RUN_STATUS_LED          DK_LED1
-#define CON_STATUS_LED          DK_LED2
-#define RUN_LED_BLINK_INTERVAL  1000
+#define RUN_STATUS_LED DK_LED1
+#define CON_STATUS_LED DK_LED2
+#define RUN_LED_BLINK_INTERVAL 1000
 
-#define USER_LED                DK_LED3
+#define USER_LED DK_LED3
 
-#define USER_BUTTON             DK_BTN1_MSK
+#define USER_BUTTON DK_BTN1_MSK
 
 static bool app_button_state;
 
@@ -48,8 +48,7 @@ static bool app_button_state;
 static K_SEM_DEFINE(ready_sem, 0, 1);
 static K_SEM_DEFINE(rx_sem, 0, 1);
 
-static K_THREAD_STACK_DEFINE(bt_rpmsg_rx_thread_stack,
-			     CONFIG_DUALCORE_RPMSG_NRF53_RX_STACK_SIZE);
+static K_THREAD_STACK_DEFINE(bt_rpmsg_rx_thread_stack, CONFIG_DUALCORE_RPMSG_NRF53_RX_STACK_SIZE);
 static struct k_thread bt_rpmsg_rx_thread_data;
 
 static struct device *ipm_tx_handle;
@@ -57,24 +56,23 @@ static struct device *ipm_rx_handle;
 
 /* Configuration defines */
 
-#define SHM_NODE            DT_CHOSEN(zephyr_ipc_shm)
-#define SHM_BASE_ADDRESS    DT_REG_ADDR(SHM_NODE)
+#define SHM_NODE DT_CHOSEN(zephyr_ipc_shm)
+#define SHM_BASE_ADDRESS DT_REG_ADDR(SHM_NODE)
 
-#define SHM_START_ADDR      (SHM_BASE_ADDRESS + 0x400)
-#define SHM_SIZE            0x7c00
-#define SHM_DEVICE_NAME     "sram0.shm"
+#define SHM_START_ADDR (SHM_BASE_ADDRESS + 0x400)
+#define SHM_SIZE 0x7c00
+#define SHM_DEVICE_NAME "sram0.shm"
 
-BUILD_ASSERT((SHM_START_ADDR + SHM_SIZE - SHM_BASE_ADDRESS)
-		<= DT_REG_SIZE(SHM_NODE),
-	"Allocated size exceeds available shared memory reserved for IPC");
+BUILD_ASSERT((SHM_START_ADDR + SHM_SIZE - SHM_BASE_ADDRESS) <= DT_REG_SIZE(SHM_NODE),
+	     "Allocated size exceeds available shared memory reserved for IPC");
 
-#define VRING_COUNT         2
-#define VRING_TX_ADDRESS    (SHM_START_ADDR + SHM_SIZE - 0x400)
-#define VRING_RX_ADDRESS    (VRING_TX_ADDRESS - 0x400)
-#define VRING_ALIGNMENT     4
-#define VRING_SIZE          16
+#define VRING_COUNT 2
+#define VRING_TX_ADDRESS (SHM_START_ADDR + SHM_SIZE - 0x400)
+#define VRING_RX_ADDRESS (VRING_TX_ADDRESS - 0x400)
+#define VRING_ALIGNMENT 4
+#define VRING_SIZE 16
 
-#define VDEV_STATUS_ADDR    SHM_BASE_ADDRESS
+#define VDEV_STATUS_ADDR SHM_BASE_ADDRESS
 
 /* End of configuration defines */
 
@@ -102,7 +100,7 @@ static struct metal_device shm_device = {
 static struct virtqueue *vq[2];
 static struct rpmsg_endpoint ep;
 
-static void button_changed(u32_t button_state, u32_t has_changed)
+static void button_changed(uint32_t button_state, uint32_t has_changed)
 {
 	if (has_changed & USER_BUTTON) {
 		app_button_state = button_state ? true : false;
@@ -131,12 +129,12 @@ static void virtio_set_status(struct virtio_device *vdev, unsigned char status)
 	sys_write8(status, VDEV_STATUS_ADDR);
 }
 
-static u32_t virtio_get_features(struct virtio_device *vdev)
+static uint32_t virtio_get_features(struct virtio_device *vdev)
 {
 	return BIT(VIRTIO_RPMSG_F_NS);
 }
 
-static void virtio_set_features(struct virtio_device *vdev, u32_t features)
+static void virtio_set_features(struct virtio_device *vdev, uint32_t features)
 {
 	/* No need for implementation */
 }
@@ -159,20 +157,17 @@ const struct virtio_dispatch dispatch = {
 	.notify = virtio_notify,
 };
 
-static void ipm_callback(void *context, u32_t id, volatile void *data)
+static void ipm_callback(const struct device *ipmdev, void *context, uint32_t id,
+			 volatile void *data)
 {
 	LOG_DBG("Got callback of id %u", id);
 	k_sem_give(&rx_sem);
 }
 
-static int endpoint_cb(struct rpmsg_endpoint *ept, void *data, size_t len,
-	u32_t src, void *priv)
+static int endpoint_cb(struct rpmsg_endpoint *ept, void *data, size_t len, uint32_t src, void *priv)
 {
 	LOG_DBG("Received message of %u bytes.", len);
-	//LOG_HEXDUMP_DBG((uint8_t *)data, len, "Data:");
 	LOG_INF("Data: \n\n%s\n", log_strdup((uint8_t *)data));
-
-	//bt_rpmsg_rx(data, len);
 
 	return RPMSG_SUCCESS;
 }
@@ -182,15 +177,10 @@ static void rpmsg_service_unbind(struct rpmsg_endpoint *ep)
 	rpmsg_destroy_ept(ep);
 }
 
-static void ns_bind_cb(struct rpmsg_device *rdev, const char *name, u32_t dest)
+static void ns_bind_cb(struct rpmsg_device *rdev, const char *name, uint32_t dest)
 {
-	(void)rpmsg_create_ept(&ep,
-				rdev,
-				name,
-				RPMSG_ADDR_ANY,
-				dest,
-				endpoint_cb,
-				rpmsg_service_unbind);
+	(void)rpmsg_create_ept(&ep, rdev, name, RPMSG_ADDR_ANY, dest, endpoint_cb,
+			       rpmsg_service_unbind);
 
 	k_sem_give(&ready_sem);
 }
@@ -216,21 +206,19 @@ int my_rpmsg_platform_init(void)
 	int status = 0;
 
 	struct metal_init_params metal_params = METAL_INIT_DEFAULTS;
-	static struct virtio_vring_info     rvrings[2];
+	static struct virtio_vring_info rvrings[2];
 	static struct rpmsg_virtio_shm_pool shpool;
-	static struct virtio_device         vdev;
-	static struct rpmsg_virtio_device   rvdev;
-	static struct metal_io_region       *io;
-	static struct metal_device          *device;
+	static struct virtio_device vdev;
+	static struct rpmsg_virtio_device rvdev;
+	static struct metal_io_region *io;
+	static struct metal_device *device;
 
 	LOG_INF("Initializing rpmsg platform");
 
 	/* Setup thread for RX data processing. */
 	k_thread_create(&bt_rpmsg_rx_thread_data, bt_rpmsg_rx_thread_stack,
-			K_THREAD_STACK_SIZEOF(bt_rpmsg_rx_thread_stack),
-			bt_rpmsg_rx_thread, NULL, NULL, NULL,
-			K_PRIO_COOP(CONFIG_DUALCORE_RPMSG_NRF53_RX_PRIO),
-			0, K_NO_WAIT);
+			K_THREAD_STACK_SIZEOF(bt_rpmsg_rx_thread_stack), bt_rpmsg_rx_thread, NULL,
+			NULL, NULL, K_PRIO_COOP(CONFIG_DUALCORE_RPMSG_NRF53_RX_PRIO), 0, K_NO_WAIT);
 
 	/* Libmetal setup */
 	err = metal_init(&metal_params);
@@ -360,9 +348,9 @@ void main(void)
 
 	uint8_t msg[15] = "Hello World!";
 	msg[14] = 0;
-	
+
 	err = send_data(msg, sizeof(msg));
-	if (err<0) {
+	if (err < 0) {
 		printk("send_data failed (err %d)\n", err);
 		return;
 	}
