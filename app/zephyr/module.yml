@@ -1,5 +1,5 @@
 # Point to the 'aci' directory (relative to the sample directory) since this
 # contains the CMakeLists.txt that adds the child image.
-
+name: rpmsg_simple
 build:
   cmake: aci
