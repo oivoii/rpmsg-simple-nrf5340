@@ -1,0 +1,5 @@
+# Point to the 'aci' directory (relative to the sample directory) since this
+# contains the CMakeLists.txt that adds the child image.
+
+build:
+  cmake: aci
