@@ -28,6 +28,12 @@ config DUALCORE_RPMSG_NRF53_RX_PRIO
 	int "RPMsg RX thread priority"
 	default 8
 
+config DUALCORE_BOOTLOADER
+	bool "Include bootloaders for both cores"
+	default n
+	imply SECURE_BOOT
+	imply BOOTLOADER_MCUBOOT
+
 config INCLUDE_NET_IMAGE
         bool "include net image as sub image"
         depends on SOC_NRF5340_CPUAPP
